@@ -1,12 +1,15 @@
 import re
 from facebook_scraper import get_posts
 
-out_file = open(r"output.txt","w+")
+out_file = open(r"output.txt", "w+")
 
-for post in get_posts('FoxNews', pages=500):
-    str1 = re.sub('[^A-Za-z0-9\'\"., ]+', '', post['text'])
-    print(str(str1))
-    out_file.writelines(str(str1))
-    out_file.writelines("\n\n")
+for post in get_posts('foxnews', pages=1, extra_info=True, options={"comments": True}):
+    for it in post['comments_full']:
+        print(it['commenter_id'])
+        try:
+            for i in get_posts(it['commenter_id'], pages=3, cookies="g.JSON"):
+                print(i)
+        except Exception as e:
+            print("An exception occurred", e)
 
 out_file.close()
