@@ -1,42 +1,46 @@
+import os
 from datetime import datetime
-
 from facebook_scraper import get_posts
+from io import open
 
 
-# out_file = open(r"output.txt", "w+")
-# out_file.close()
-
-def posts_and_commenters(users, max_depth):
-    print("Depth = ", max_depth)
+def posts_and_commenters(users, depth , post_per_page, users_to_add_each_iteration):
+    print("Depth = ", depth)
     users_id = []
     for user in users:
         print("user: ", user)
-        count = 0
-        for post in get_posts(user, pages=5, extra_info=True, options={"comments": True}, cookies="cookies.json"):
+        count = 1
+        for post in get_posts(user, pages=2*post_per_page, extra_info=True, options={"comments": True}, cookies="cookies.json"):
+            print("new post")
             try:
-                if post['text'] != "":
-                    print("post_id",post['post_id'])
-                    out_file = open(r"" + str(post['username']) + "_" + str(count) + ".txt", "w+")
-                    count += 1
-                    out_file.writelines("Username: " + str(post['username']) + "\n")
-                    out_file.writelines("Post_id: " + str(post['post_id']) + "\n")
-                    out_file.writelines("Text: " + str(post['text']) + "\n")
-                    try:
-                        out_file.writelines("Date: " + str(datetime.fromtimestamp(post['timestamp'])) + "\n")
-                    except Exception as e1:
-                        out_file.writelines("Date: None\n")
-                    out_file.writelines("Likes: " + str(post['likes']) + "\n")
-                    out_file.writelines("Comments: " + str(post['comments']) + "\n")
-                    out_file.writelines("Shares: " + str(post['shares']) + "\n")
-                    out_file.close()
+                if count <= post_per_page:
+                    if post['text'] != "":
+                        print("post_id",post['post_id'])
+                        out_file = open("posts/" + str(post['username']) + "_" + str(count) + ".txt", mode="w+", encoding="utf-8")
+                        out_file.writelines("Username: " + str(post['username']) + "\n")
+                        out_file.writelines("Post_id: " + str(post['post_id']) + "\n")
+                        out_file.writelines("Text: " + str(post['text'].encode('utf-8','ignore').decode("utf-8")) + "\n")
+                        try:
+                            out_file.writelines("Date: " + str(datetime.fromtimestamp(post['timestamp'])) + "\n")
+                        except Exception as e1:
+                            out_file.writelines("Date: None\n")
+                        out_file.writelines("Likes: " + str(post['likes']) + "\n")
+                        out_file.writelines("Comments: " + str(post['comments']) + "\n")
+                        out_file.writelines("Shares: " + str(post['shares']) + "\n")
+                        out_file.close()
+                        count += 1
+                else:
+                    break
             except Exception as e1:
                 print("ERROR: ", e1)
-            for comment in post['comments_full'][:5]:
+                file = out_file.name
+                out_file.close()
+                os.remove(file)
+            for comment in post['comments_full'][:users_to_add_each_iteration]:
                 users_id.append(comment['commenter_id'])
-    print("done users")
-    if max_depth > 0:
-        print(users_id)
-        posts_and_commenters(users_id, max_depth-5)
+    if depth > 0:
+        print("done user collected", len(users_id), "users!")
+        posts_and_commenters(set(users_id[:users_to_add_each_iteration]), depth-1, post_per_page, users_to_add_each_iteration)
 
 
-posts_and_commenters(['foxnews'], 2)
+posts_and_commenters(['Netanyahu'], depth=2 , post_per_page=10, users_to_add_each_iteration=5)
