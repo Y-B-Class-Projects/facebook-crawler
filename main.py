@@ -1,4 +1,8 @@
 import os
+import time
+from datetime import datetime
+from datetime import timedelta
+
 from facebook_scraper import get_posts, get_group_info
 from io import open
 import shutil
@@ -63,10 +67,17 @@ def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_t
             posts = get_posts(account=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
                               cookies="cookies.json")
         for post in posts:
-            if count <= post_per_page:
-                count = write_post_data_to_file(path, post, count)
-            else:
-                break
+            try:
+                if count <= post_per_page:
+                    count = write_post_data_to_file(path, post, count)
+                else:
+                    break
+                time.sleep(10)  # 10s
+            except Exception as ex:
+                print("ERROR:", ex)
+                time.sleep(3600)    # 1h
+                print(str(datetime.now() + timedelta(minutes=60)))
+                pass
 
             for comment in post['comments_full'][:users_to_add_each_iteration]:
                 users_id.append(comment['commenter_id'])
