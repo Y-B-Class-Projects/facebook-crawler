@@ -61,28 +61,30 @@ def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_t
     for user in users:
         print("user: ", user)
         count = 1
-        if is_group(user):
-            posts = get_posts(group=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
-                              cookies="cookies.json")
-        else:
-            posts = get_posts(account=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
-                              cookies="cookies.json")
-        for post in posts:
-            try:
+        try:
+            if is_group(user):
+                posts = get_posts(group=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
+                                  cookies="cookies.json")
+            else:
+                posts = get_posts(account=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
+                                  cookies="cookies.json")
+            for post in posts:
+                print(count, end=', ')
                 if count <= post_per_page:
                     count = write_post_data_to_file(path, post, count)
                 else:
                     break
-                time.sleep(1)  # 10s
-                print(count, end=', ')
-            except Exception as ex:
-                print("ERROR:", ex)
-                time.sleep(3600)    # 1h
-                print(str(datetime.now() + timedelta(minutes=60)))
-                pass
+                time.sleep(1)  # 1s
 
-            for comment in post['comments_full'][:users_to_add_each_iteration]:
-                users_id.append(comment['commenter_id'])
+                for comment in post['comments_full'][:users_to_add_each_iteration]:
+                    users_id.append(comment['commenter_id'])
+
+        except Exception as ex:
+            print("ERROR:", ex)
+            time.sleep(3600)  # 1h
+            print(str(datetime.now() + timedelta(minutes=60)))
+            pass
+
         print()
     if current_depth < max_depth:
         print("done user collected", len(users_id), "users!")
