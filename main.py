@@ -1,5 +1,6 @@
 import os
 import time
+import warnings
 from datetime import datetime
 from datetime import timedelta
 
@@ -72,7 +73,8 @@ def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_t
                     count = write_post_data_to_file(path, post, count)
                 else:
                     break
-                time.sleep(10)  # 10s
+                time.sleep(1)  # 10s
+                print(count, end=', ')
             except Exception as ex:
                 print("ERROR:", ex)
                 time.sleep(3600)    # 1h
@@ -81,6 +83,7 @@ def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_t
 
             for comment in post['comments_full'][:users_to_add_each_iteration]:
                 users_id.append(comment['commenter_id'])
+        print()
     if current_depth < max_depth:
         print("done user collected", len(users_id), "users!")
         posts_and_commenters(set(users_id[:users_to_add_each_iteration]), current_depth + 1, max_depth, post_per_page,
@@ -107,6 +110,7 @@ def main(posts_path):
 
 
 if __name__ == '__main__':
+    warnings.filterwarnings("ignore")
     posts_path = os.getcwd()
     posts_path = os.path.join(posts_path, 'posts')
     if not os.path.exists(posts_path):
