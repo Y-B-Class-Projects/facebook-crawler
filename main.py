@@ -3,36 +3,39 @@ import time
 import warnings
 from datetime import datetime
 from datetime import timedelta
+from math import ceil
 
 from facebook_scraper import get_posts, get_group_info
 from io import open
+from random import randint
 import shutil
 
 POSTS_PATH = '/posts'
 
 
 def write_post_data_to_file(path, post, count):
-    if post['text'] != "":
-        out_file = open(path + "/" + str(post['username']) + "_" + str(count) + ".txt", mode="w+", encoding="utf-8")
-        try:
-            out_file.writelines("Username: " + str(post['username']) + "\n")
-            out_file.writelines("Post_url: " + str(post['post_url']) + "\n")
-            out_file.writelines(
-                "Text: " + str(post['text'].encode('utf-8', 'ignore').decode("utf-8")) + "\n")
+    if post['text'] is not None:
+        if post['text'] not in ['', 'None']:
+            out_file = open(path + "/" + str(post['username']) + "_" + str(count) + ".txt", mode="w+", encoding="utf-8")
             try:
-                out_file.writelines("Date: " + str(post['time']) + "\n")
+                out_file.writelines("Username: " + str(post['username']) + "\n")
+                out_file.writelines("Post_url: " + str(post['post_url']) + "\n")
+                out_file.writelines(
+                    "Text: " + str(post['text'].encode('utf-8', 'ignore').decode("utf-8")) + "\n")
+                try:
+                    out_file.writelines("Date: " + str(post['time']) + "\n")
+                except Exception as e1:
+                    out_file.writelines("Date: None\n")
+                out_file.writelines("Likes: " + str(post['likes']) + "\n")
+                out_file.writelines("Comments: " + str(post['comments']) + "\n")
+                out_file.writelines("Shares: " + str(post['shares']) + "\n")
+                out_file.close()
+                count += 1
             except Exception as e1:
-                out_file.writelines("Date: None\n")
-            out_file.writelines("Likes: " + str(post['likes']) + "\n")
-            out_file.writelines("Comments: " + str(post['comments']) + "\n")
-            out_file.writelines("Shares: " + str(post['shares']) + "\n")
-            out_file.close()
-            count += 1
-        except Exception as e1:
-            print("ERROR: ", e1)
-            file = out_file.name
-            out_file.close()
-            os.remove(file)
+                print("ERROR_01: ", e1)
+                file = out_file.name
+                out_file.close()
+                os.remove(file)
     return count
 
 
@@ -44,7 +47,7 @@ def is_group(id):
         return False
 
 
-def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_to_add_each_iteration, folder_path):
+def posts_and_commenters(users, current_depth, max_depth, n_posts, users_to_add_each_iteration, folder_path):
     print("Depth = ", current_depth, '/', max_depth)
     users_id = []
 
@@ -52,7 +55,7 @@ def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_t
     if not os.path.exists(path):
         os.mkdir(path)
     if current_depth >= 2:
-        parent_depth = current_depth-1
+        parent_depth = current_depth - 1
         parent_folder_path = os.path.join(folder_path, 'depth_' + str(parent_depth).zfill(2))
         parent_files = os.listdir(parent_folder_path)
         for file_name in parent_files:
@@ -63,32 +66,37 @@ def posts_and_commenters(users, current_depth, max_depth, post_per_page, users_t
         count = 1
         try:
             if is_group(user):
-                posts = get_posts(group=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
+                posts = get_posts(group=user, pages=5, extra_info=True,
+                                  options={"comments": users_to_add_each_iteration,
+                                           "posts_per_page": ceil(n_posts / 3)},
                                   cookies="cookies.json")
             else:
-                posts = get_posts(account=user, pages=2 * post_per_page, extra_info=True, options={"comments": True},
+                posts = get_posts(account=user, pages=5, extra_info=True,
+                                  options={"comments": users_to_add_each_iteration,
+                                           "posts_per_page": ceil(n_posts / 3)},
                                   cookies="cookies.json")
             for post in posts:
                 print(count, end=', ')
-                if count <= post_per_page:
+                if count <= n_posts:
                     count = write_post_data_to_file(path, post, count)
                 else:
                     break
-                time.sleep(1)  # 1s
+                time.sleep(randint(5, 15))
 
                 for comment in post['comments_full'][:users_to_add_each_iteration]:
                     users_id.append(comment['commenter_id'])
 
         except Exception as ex:
             print("ERROR:", ex)
-            time.sleep(3600)  # 1h
-            print(str(datetime.now() + timedelta(minutes=60)))
+            if 'Temporarily Blocked' in ex:
+                print('Sleep till', str(datetime.now() + timedelta(minutes=60)))
+                time.sleep(3600)  # 1h
             pass
 
         print()
     if current_depth < max_depth:
         print("done user collected", len(users_id), "users!")
-        posts_and_commenters(set(users_id[:users_to_add_each_iteration]), current_depth + 1, max_depth, post_per_page,
+        posts_and_commenters(set(users_id[:users_to_add_each_iteration]), current_depth + 1, max_depth, n_posts,
                              users_to_add_each_iteration, folder_path)
 
 
@@ -106,7 +114,7 @@ def main(posts_path):
         posts_and_commenters([user],
                              current_depth=1,
                              max_depth=2,
-                             post_per_page=100,
+                             n_posts=100,
                              users_to_add_each_iteration=5,
                              folder_path=folder_path)
 
