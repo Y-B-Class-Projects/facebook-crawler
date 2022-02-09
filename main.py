@@ -88,9 +88,8 @@ def posts_and_commenters(users, current_depth, max_depth, n_posts, users_to_add_
 
         except Exception as ex:
             print("ERROR:", ex)
-            if 'Temporarily Blocked' in ex:
-                print('Sleep till', str(datetime.now() + timedelta(minutes=60)))
-                time.sleep(3600)  # 1h
+            print(str(datetime.now() + timedelta(minutes=30)))
+            time.sleep(1800)  # 1h
             pass
 
         print()
